@@ -1,5 +1,6 @@
 # Guanglin Yu
 # 2015013233
+# 改动基本和seq-full.hcl差不多
 
 
 #/* $begin pipe-all-hcl */
