@@ -2,6 +2,10 @@
 #2015013233
 #pipe-full.hcl的改动同seq-full.hcl
 
+# comments supposed to be here
+# are same as those found in ../seq/seq-full.hcl
+
+
 #/* $begin pipe-all-hcl */
 ####################################################################
 #    HCL Description of Control for Pipelined Y86 Processor        #
@@ -163,7 +167,7 @@ int f_ifun = [
 ];
 
 # Is instruction valid?
-bool instr_valid = f_icode in 
+bool instr_valid = f_icode in
 	{ INOP, IHALT, IRRMOVL, IIRMOVL, IRMMOVL, IMRMOVL,
 	  IOPL, IJXX, ICALL, IRET, IPUSHL, IPOPL, IIADDL, ILEAVE };
 
@@ -177,7 +181,7 @@ int f_stat = [
 
 # Does fetched instruction require a regid byte?
 bool need_regids =
-	f_icode in { IRRMOVL, IOPL, IPUSHL, IPOPL, 
+	f_icode in { IRRMOVL, IOPL, IPUSHL, IPOPL,
 		     IIRMOVL, IRMMOVL, IMRMOVL, IIADDL };
 
 # Does fetched instruction require a constant word?
@@ -197,27 +201,28 @@ int f_predPC = [
 int d_srcA = [
 	D_icode in { IRRMOVL, IRMMOVL, IOPL, IPUSHL  } : D_rA;
 	D_icode in { IPOPL, IRET } : RESP;
-	D_icode in { ILEAVE} : RESP;
+	D_icode in { ILEAVE } : REBP;
 	1 : RNONE; # Don't need register
 ];
 
 ## What register should be used as the B source?
 int d_srcB = [
-	D_icode in { IOPL, IRMMOVL, IMRMOVL  } : D_rB;
+	D_icode in { IOPL, IRMMOVL, IMRMOVL, IIADDL } : D_rB;
 	D_icode in { IPUSHL, IPOPL, ICALL, IRET } : RESP;
+	D_icode in { ILEAVE } : REBP;
 	1 : RNONE;  # Don't need register
 ];
 
 ## What register should be used as the E destination?
 int d_dstE = [
-	D_icode in { IRRMOVL, IIRMOVL, IOPL, IIADDL} : D_rB;
+	D_icode in { IRRMOVL, IIRMOVL, IOPL, IIADDL } : D_rB;
 	D_icode in { IPUSHL, IPOPL, ICALL, IRET, ILEAVE } : RESP;
 	1 : RNONE;  # Don't write any register
 ];
 
 ## What register should be used as the M destination?
 int d_dstM = [
-	D_icode in { IMRMOVL, IPOPL, IIADDL } : D_rA;
+	D_icode in { IMRMOVL, IPOPL } : D_rA;
 	D_icode in { ILEAVE } : REBP;
 	1 : RNONE;  # Don't write any register
 ];
@@ -269,7 +274,7 @@ int alufun = [
 ];
 
 ## Should the condition codes be updated?
-bool set_cc = E_icode {IOPL, IIADDL } &&
+bool set_cc = E_icode in { IOPL, IIADDL } &&
 	# State changes only during normal operation
 	!m_stat in { SADR, SINS, SHLT } && !W_stat in { SADR, SINS, SHLT };
 
@@ -337,7 +342,7 @@ bool F_stall =
 
 # Should I stall or inject a bubble into Pipeline Register D?
 # At most one of these can be true.
-bool D_stall = 
+bool D_stall =
 	# Conditions for a load/use hazard
 	E_icode in { IMRMOVL, IPOPL } &&
 	 E_dstM in { d_srcA, d_srcB };
