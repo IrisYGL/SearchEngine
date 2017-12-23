@@ -96,7 +96,7 @@ boolsig dmem_error 'dmem_error'		# Error signal from data memory
 #    Control Signal Definitions.                                   #
 ####################################################################
 
-################ Fetch Stage(取指)  ###################################
+################ Fetch Stage     ###################################
 
 # Determine instruction code
 int icode = [
@@ -110,46 +110,46 @@ int ifun = [
 	1: imem_ifun;		# Default: get from instruction memory
 ];
 
-bool instr_valid = icode in 
+bool instr_valid = icode in
 	{ INOP, IHALT, IRRMOVL, IIRMOVL, IRMMOVL, IMRMOVL,
-	       IOPL, IJXX, ICALL, IRET, IPUSHL, IPOPL, IIADDL, ILEAVE };	#是否是合法的指令
+	       IOPL, IJXX, ICALL, IRET, IPUSHL, IPOPL, IIADDL, ILEAVE };
 
 # Does fetched instruction require a regid byte?
 bool need_regids =
-	icode in { IRRMOVL, IOPL, IPUSHL, IPOPL, 
-		     IIRMOVL, IRMMOVL, IMRMOVL, IIADDL };		#是否需要寄存器
+	icode in { IRRMOVL, IOPL, IPUSHL, IPOPL,
+		     IIRMOVL, IRMMOVL, IMRMOVL, IIADDL };
 
 # Does fetched instruction require a constant word?
 bool need_valC =
-	icode in { IIRMOVL, IRMMOVL, IMRMOVL, IJXX, ICALL, IIADDL };	#是否需要立即数
+	icode in { IIRMOVL, IRMMOVL, IMRMOVL, IJXX, ICALL, IIADDL };
 
-################ Decode Stage（译码与写回） ###################################
+################ Decode Stage    ###################################
 
-## What register should be used as the A source? 指令需要在srcA端口读入哪个值
+## What register should be used as the A source?
 int srcA = [
-	icode in { IRRMOVL, IRMMOVL, IOPL, IPUSHL  } : rA;
+	icode in { IRRMOVL, IRMMOVL, IOPL, IPUSHL } : rA;
 	icode in { IPOPL, IRET } : RESP;
-	icode in { ILEAVE} : RESP;
+	icode in { ILEAVE } : REBP;
 	1 : RNONE; # Don't need register
 ];
 
-## What register should be used as the B source? 指令需要在srcB端口读入哪个值
+## What register should be used as the B source?
 int srcB = [
-	icode in { IOPL, IRMMOVL, IMRMOVL， IIADDL  } : rB;
+	icode in { IOPL, IRMMOVL, IMRMOVL, IIADDL } : rB;
 	icode in { IPUSHL, IPOPL, ICALL, IRET } : RESP;
 	icode in { ILEAVE } : REBP;
 	1 : RNONE;  # Don't need register
 ];
 
-## What register should be used as the E destination? 指令需要在dstE端口读入哪个值
+## What register should be used as the E destination?
 int dstE = [
 	icode in { IRRMOVL } && Cnd : rB;
-	icode in { IIRMOVL, IOPL， IIADDL} : rB;
-	icode in { IPUSHL, IPOPL, ICALL, IRET， ILEAVE } : RESP;
+	icode in { IIRMOVL, IOPL, IIADDL } : rB;
+	icode in { IPUSHL, IPOPL, ICALL, IRET, ILEAVE } : RESP;
 	1 : RNONE;  # Don't write any register
 ];
 
-## What register should be used as the M destination? 指令需要在dstM端口读入哪个值
+## What register should be used as the M destination?
 int dstM = [
 	icode in { IMRMOVL, IPOPL } : rA;
 	icode in { ILEAVE } : REBP;
@@ -169,10 +169,9 @@ int aluA = [
 
 ## Select input B to ALU
 int aluB = [
-	icode in { IRMMOVL, IMRMOVL, IOPL, ICALL, 
-		      IPUSHL, IRET, IPOPL, IIADDL } : valB;
+	icode in { IRMMOVL, IMRMOVL, IOPL, ICALL,
+		      IPUSHL, IRET, IPOPL, IIADDL, ILEAVE } : valB;
 	icode in { IRRMOVL, IIRMOVL } : 0;
-	icode in { ILEAVE } : valA;
 	# Other instructions don't need ALU
 ];
 
@@ -182,7 +181,7 @@ int alufun = [
 	1 : ALUADD;
 ];
 
-## Should the condition codes be updated?是否需要设置条件码
+## Should the condition codes be updated?
 bool set_cc = icode in { IOPL, IIADDL };
 
 ################ Memory Stage    ###################################
