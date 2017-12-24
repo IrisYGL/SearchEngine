@@ -1,3 +1,8 @@
+# Guanglin Yu
+# 2015013233
+# 改动基本和seq-full.hcl差不多
+
+
 #/* $begin pipe-all-hcl */
 ####################################################################
 #    HCL Description of Control for Pipelined Y86 Processor        #
@@ -8,22 +13,6 @@
 ## The file contains a declaration of the icodes
 ## for iaddl (IIADDL) and leave (ILEAVE).
 ## Your job is to add the rest of the logic to make it work
-
-####################################################################
-#    Name and changes                                              #
-####################################################################
-
-# Zhang Zichen 5110369009
-
-# 1. Add the action of instruction iaddl and leave to the pipe.
-
-# 2. If the formor is mrmovl D(rA), rB
-#    and the later is rmmovl rB, D(rC)
-#    the value of rB generize in former's M stage
-#    but used in later's M stage. Stall can be cancelled.
-#    However, the value is gotten in later's D stage.
-#    It must be wrong. So we add juagement of e_valA in later's E stage,
-#    when e_valA is transformmed.
 
 ####################################################################
 #    C Include's.  Don't alter these                               #
@@ -175,7 +164,7 @@ int f_ifun = [
 ];
 
 # Is instruction valid?
-bool instr_valid = f_icode in 
+bool instr_valid = f_icode in
 	{ INOP, IHALT, IRRMOVL, IIRMOVL, IRMMOVL, IMRMOVL,
 	  IOPL, IJXX, ICALL, IRET, IPUSHL, IPOPL, IIADDL, ILEAVE };
 
@@ -189,7 +178,7 @@ int f_stat = [
 
 # Does fetched instruction require a regid byte?
 bool need_regids =
-	f_icode in { IRRMOVL, IOPL, IPUSHL, IPOPL, 
+	f_icode in { IRRMOVL, IOPL, IPUSHL, IPOPL,
 		     IIRMOVL, IRMMOVL, IMRMOVL, IIADDL };
 
 # Does fetched instruction require a constant word?
@@ -215,7 +204,7 @@ int d_srcA = [
 
 ## What register should be used as the B source?
 int d_srcB = [
-	D_icode in { IOPL, IRMMOVL, IMRMOVL, IIADDL  } : D_rB;
+	D_icode in { IOPL, IRMMOVL, IMRMOVL, IIADDL } : D_rB;
 	D_icode in { IPUSHL, IPOPL, ICALL, IRET } : RESP;
 	D_icode in { ILEAVE } : REBP;
 	1 : RNONE;  # Don't need register
@@ -269,7 +258,7 @@ int aluA = [
 
 ## Select input B to ALU
 int aluB = [
-	E_icode in { IRMMOVL, IMRMOVL, IOPL, ICALL, 
+	E_icode in { IRMMOVL, IMRMOVL, IOPL, ICALL,
 		     IPUSHL, IRET, IPOPL, IIADDL, ILEAVE } : E_valB;
 	E_icode in { IRRMOVL, IIRMOVL } : 0;
 	# Other instructions don't need ALU
@@ -282,18 +271,12 @@ int alufun = [
 ];
 
 ## Should the condition codes be updated?
-bool set_cc = E_icode == IOPL || E_icode == IIADDL &&
+bool set_cc = E_icode in { IOPL, IIADDL } &&
 	# State changes only during normal operation
 	!m_stat in { SADR, SINS, SHLT } && !W_stat in { SADR, SINS, SHLT };
 
 ## Generate valA in execute stage
-# int e_valA = E_valA;    # Pass valA through stage
-# Add the judgement of e_valA
-int e_valA = [
-	M_icode in { IMRMOVL, IPOPL, ILEAVE } && E_icode in { IRMMOVL, IPUSHL }
-		 && M_dstM == E_srcA && M_dstM != E_srcB: m_valM;
-	1 : E_valA; # Use value read from register file
-];
+int e_valA = E_valA;    # Pass valA through stage
 
 ## Set dstE to RNONE in event of not-taken conditional move
 int e_dstE = [
@@ -349,35 +332,25 @@ int Stat = [
 bool F_bubble = 0;
 bool F_stall =
 	# Conditions for a load/use hazard
-	E_icode in { IMRMOVL, IPOPL, ILEAVE } &&
-	# fixed
-	!(D_icode in { IRMMOVL, IPUSHL } && E_dstM == d_srcA && E_dstM != d_srcB) &&
-	# !fixed
-	E_dstM in { d_srcA, d_srcB } ||
+	E_icode in { IMRMOVL, IPOPL } &&
+	 E_dstM in { d_srcA, d_srcB } ||
 	# Stalling at fetch while ret passes through pipeline
 	IRET in { D_icode, E_icode, M_icode };
 
 # Should I stall or inject a bubble into Pipeline Register D?
 # At most one of these can be true.
-bool D_stall = 
+bool D_stall =
 	# Conditions for a load/use hazard
-	E_icode in { IMRMOVL, IPOPL, ILEAVE } &&
-	# fixed
-	!(D_icode in { IRMMOVL, IPUSHL } && E_dstM == d_srcA && E_dstM != d_srcB) &&
-	# !fixed
-	E_dstM in { d_srcA, d_srcB };
+	E_icode in { IMRMOVL, IPOPL } &&
+	 E_dstM in { d_srcA, d_srcB };
 
 bool D_bubble =
 	# Mispredicted branch
 	(E_icode == IJXX && !e_Cnd) ||
 	# Stalling at fetch while ret passes through pipeline
 	# but not condition for a load/use hazard
-	!(E_icode in { IMRMOVL, IPOPL, ILEAVE } &&
-	# fixed
-	!(D_icode in { IRMMOVL, IPUSHL } && E_dstM == d_srcA && E_dstM != d_srcB) &&
-	# !fixed
-	E_dstM in { d_srcA, d_srcB }) &&
-	IRET in { D_icode, E_icode, M_icode };
+	!(E_icode in { IMRMOVL, IPOPL } && E_dstM in { d_srcA, d_srcB }) &&
+	  IRET in { D_icode, E_icode, M_icode };
 
 # Should I stall or inject a bubble into Pipeline Register E?
 # At most one of these can be true.
@@ -386,11 +359,8 @@ bool E_bubble =
 	# Mispredicted branch
 	(E_icode == IJXX && !e_Cnd) ||
 	# Conditions for a load/use hazard
-	E_icode in { IMRMOVL, IPOPL, ILEAVE } &&
-	# fixed
-	!(D_icode in { IRMMOVL, IPUSHL } && E_dstM == d_srcA && E_dstM != d_srcB) &&
-	# !fixed
-	E_dstM in { d_srcA, d_srcB};
+	E_icode in { IMRMOVL, IPOPL } &&
+	 E_dstM in { d_srcA, d_srcB};
 
 # Should I stall or inject a bubble into Pipeline Register M?
 # At most one of these can be true.
@@ -402,4 +372,3 @@ bool M_bubble = m_stat in { SADR, SINS, SHLT } || W_stat in { SADR, SINS, SHLT }
 bool W_stall = W_stat in { SADR, SINS, SHLT };
 bool W_bubble = 0;
 #/* $end pipe-all-hcl */
-

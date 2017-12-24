@@ -1,3 +1,7 @@
+#Guanglin YU
+#2015013233
+
+
 #/* $begin seq-all-hcl */
 ####################################################################
 #  HCL Description of Control for Single Cycle Y86 Processor SEQ   #
@@ -8,37 +12,6 @@
 ## The file contains a declaration of the icodes
 ## for iaddl (IIADDL) and leave (ILEAVE).
 ## Your job is to add the rest of the logic to make it work
-
-####################################################################
-#    Name and code description                                     #
-####################################################################
-
-#Zhang Zichen 5110369009
-
-########### iaddl V, rB ###########
-# |C|0|F|rB|   V   |
-# F: icode : ifun <- M1[PC] = C : 0
-#    rA : rB <- Ma[PC+1] = F : rB
-#    valC <- M4[PC+2] = V
-#    valP <- PC + 6
-# D: valB <- R[rB]
-# E: valE <- valC + valB
-#    Set CC
-# M:
-# W: R[rB] <- valE
-# U: PC <- valP
-
-############# leave ###############
-# |D|0|
-# F: icode : ifun <- M1[PC] = D : 0
-#    valP <- PC + 1
-# D: valA <- R[%ebp]
-#    valB <- R[%ebp]
-# E: valE <- valB + 4
-# M: valM <- M4[valA]
-# W: R[%esp] <- valE
-#    R[%ebp] <- valM
-# U: PC <- valP
 
 ####################################################################
 #    C Include's.  Don't alter these                               #
@@ -124,7 +97,7 @@ boolsig dmem_error 'dmem_error'		# Error signal from data memory
 #    Control Signal Definitions.                                   #
 ####################################################################
 
-################ Fetch Stage     ###################################
+################ Fetch Stage (取指)    ###################################
 
 # Determine instruction code
 int icode = [
@@ -138,24 +111,24 @@ int ifun = [
 	1: imem_ifun;		# Default: get from instruction memory
 ];
 
-bool instr_valid = icode in 
+bool instr_valid = icode in
 	{ INOP, IHALT, IRRMOVL, IIRMOVL, IRMMOVL, IMRMOVL,
 	       IOPL, IJXX, ICALL, IRET, IPUSHL, IPOPL, IIADDL, ILEAVE };
 
 # Does fetched instruction require a regid byte?
 bool need_regids =
-	icode in { IRRMOVL, IOPL, IPUSHL, IPOPL, 
+	icode in { IRRMOVL, IOPL, IPUSHL, IPOPL,
 		     IIRMOVL, IRMMOVL, IMRMOVL, IIADDL };
 
 # Does fetched instruction require a constant word?
 bool need_valC =
 	icode in { IIRMOVL, IRMMOVL, IMRMOVL, IJXX, ICALL, IIADDL };
 
-################ Decode Stage    ###################################
+################ Decode Stage （译码与写回）   ###################################
 
 ## What register should be used as the A source?
 int srcA = [
-	icode in { IRRMOVL, IRMMOVL, IOPL, IPUSHL  } : rA;
+	icode in { IRRMOVL, IRMMOVL, IOPL, IPUSHL } : rA;
 	icode in { IPOPL, IRET } : RESP;
 	icode in { ILEAVE } : REBP;
 	1 : RNONE; # Don't need register
@@ -172,7 +145,7 @@ int srcB = [
 ## What register should be used as the E destination?
 int dstE = [
 	icode in { IRRMOVL } && Cnd : rB;
-	icode in { IIRMOVL, IOPL, IIADDL} : rB;
+	icode in { IIRMOVL, IOPL, IIADDL } : rB;
 	icode in { IPUSHL, IPOPL, ICALL, IRET, ILEAVE } : RESP;
 	1 : RNONE;  # Don't write any register
 ];
@@ -197,7 +170,7 @@ int aluA = [
 
 ## Select input B to ALU
 int aluB = [
-	icode in { IRMMOVL, IMRMOVL, IOPL, ICALL, 
+	icode in { IRMMOVL, IMRMOVL, IOPL, ICALL,
 		      IPUSHL, IRET, IPOPL, IIADDL, ILEAVE } : valB;
 	icode in { IRRMOVL, IIRMOVL } : 0;
 	# Other instructions don't need ALU
@@ -259,4 +232,3 @@ int new_pc = [
 	1 : valP;
 ];
 #/* $end seq-all-hcl */
-
